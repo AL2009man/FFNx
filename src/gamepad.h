@@ -68,6 +68,9 @@ typedef struct GamepadVibration
 // SDL3 state type means we still use SDL_JoystickID as the device identifier.
 // It is not used as the legacy SI joystick path, only for SDL_GetGamepads / event IDs.
 
+#define CONFIRM_BUTTON SDL_GAMEPAD_BUTTON_SOUTH
+#define CANCEL_BUTTON SDL_GAMEPAD_BUTTON_EAST
+
 class Gamepad
 {
 private:
@@ -77,6 +80,7 @@ private:
 
     float deadzoneX;
     float deadzoneY;
+    bool buttonsFlipped;
 
     SDL_Gamepad *sdlGamepad = nullptr;
     SDL_JoystickID sdlInstanceId = -1;
@@ -88,6 +92,10 @@ private:
     bool openGamepad();
     void GetDeviceName(SDL_Gamepad *gp, SDL_JoystickID id);
     void closeGamepad();
+
+    // Returns true and sets out if the user has an explicit button mapping override configured.
+    // Returns false (leaving out unchanged) when the setting is "Auto".
+    bool getFlippedButtonSetting(bool* out) const;
 
 public:
     Gamepad();
@@ -109,6 +117,10 @@ public:
     bool Vibrate(WORD wLeftMotorSpeed, WORD wRightMotorSpeed);
     bool IsPressed(WORD) const;
     bool IsIdle() const;
+    
+    // Button mapping
+    void initButtonMapping(SDL_Gamepad* gamepad);
+    SDL_GamepadButton getMappedButton(SDL_GamepadButton button) const;
 };
 
 extern Gamepad gamepad;

@@ -147,6 +147,7 @@ bool ff8_external_music_force_original_filenames;
 bool ff8_use_gamepad_icons;
 bool ff8_always_capture_input;
 long ff8_fps_limiter;
+std::string gamepad_button_mapping_mode;
 std::string app_path;
 std::string data_drive;
 bool enable_ntscj_gamut_mode;
@@ -314,6 +315,7 @@ void read_cfg()
 	ff8_use_gamepad_icons = config["ff8_use_gamepad_icons"].value_or(false);
 	ff8_always_capture_input = config["ff8_always_capture_input"].value_or(false);
 	ff8_fps_limiter = config["ff8_fps_limiter"].value_or(FPS_LIMITER_DEFAULT);
+	gamepad_button_mapping_mode = config["gamepad_button_mapping_mode"].value_or("Auto");
 	app_path = config["app_path"].value_or("");
 	data_drive = config["data_drive"].value_or("");
 	enable_ntscj_gamut_mode = config["enable_ntscj_gamut_mode"].value_or(false);

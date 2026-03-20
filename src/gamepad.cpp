@@ -29,13 +29,13 @@
 Gamepad gamepad;
 
 Gamepad::Gamepad()
-    : cId(-1), deadzoneX(0.05f), deadzoneY(0.02f), sdlGamepad(nullptr), sdlInstanceId(-1), sdlInitialized(false),
+    : cId(-1), deadzoneX(0.05f), deadzoneY(0.02f), buttonsFlipped(false), sdlGamepad(nullptr), sdlInstanceId(-1), sdlInitialized(false),
       leftStickX(0.0f), leftStickY(0.0f), rightStickX(0.0f), rightStickY(0.0f), leftTrigger(0.0f), rightTrigger(0.0f), controllerName("")
 {
 }
 
 Gamepad::Gamepad(float dzX, float dzY)
-    : cId(-1), deadzoneX(dzX), deadzoneY(dzY), sdlGamepad(nullptr), sdlInstanceId(-1), sdlInitialized(false),
+    : cId(-1), deadzoneX(dzX), deadzoneY(dzY), buttonsFlipped(false), sdlGamepad(nullptr), sdlInstanceId(-1), sdlInitialized(false),
       leftStickX(0.0f), leftStickY(0.0f), rightStickX(0.0f), rightStickY(0.0f), leftTrigger(0.0f), rightTrigger(0.0f), controllerName("")
 {
 }
@@ -349,4 +349,53 @@ bool Gamepad::IsIdle() const
            !IsPressed(GAMEPAD_BUTTON_LEFT_THUMB)     &&
            !IsPressed(GAMEPAD_BUTTON_RIGHT_THUMB)    &&
            !IsPressed(GAMEPAD_BUTTON_GUIDE);
+}
+
+bool Gamepad::getFlippedButtonSetting(bool* out) const
+{
+    if (gamepad_button_mapping_mode == "Swap")
+    {
+        *out = true;
+        return true;
+    }
+    if (gamepad_button_mapping_mode == "NoSwap")
+    {
+        *out = false;
+        return true;
+    }
+    // "Auto" or anything else: no explicit override
+    return false;
+}
+
+void Gamepad::initButtonMapping(SDL_Gamepad* gamepad)
+{
+    if (!getFlippedButtonSetting(&buttonsFlipped))
+    {
+        // Auto: detect if the controller physically places B at the South position (Nintendo Switch layout)
+        if (gamepad && SDL_GetGamepadButtonLabel(gamepad, SDL_GAMEPAD_BUTTON_SOUTH) == SDL_GAMEPAD_BUTTON_LABEL_B)
+            buttonsFlipped = true;
+        else
+            buttonsFlipped = false;
+    }
+
+    if (trace_all || trace_gamepad)
+        ffnx_trace("Gamepad: Button mapping initialized as %s (mode: %s)\n",
+                   buttonsFlipped ? "Swap (Nintendo layout)" : "No-Swap (Xbox/PlayStation layout)",
+                   gamepad_button_mapping_mode.c_str());
+}
+
+SDL_GamepadButton Gamepad::getMappedButton(SDL_GamepadButton button) const
+{
+    if (!buttonsFlipped)
+        return button;
+
+    // Swap face buttons to match Nintendo Switch's physical layout
+    switch (button)
+    {
+        case SDL_GAMEPAD_BUTTON_SOUTH:  return SDL_GAMEPAD_BUTTON_EAST;
+        case SDL_GAMEPAD_BUTTON_EAST:   return SDL_GAMEPAD_BUTTON_SOUTH;
+        case SDL_GAMEPAD_BUTTON_WEST:   return SDL_GAMEPAD_BUTTON_NORTH;
+        case SDL_GAMEPAD_BUTTON_NORTH:  return SDL_GAMEPAD_BUTTON_WEST;
+        default: return button;
+    }
 }

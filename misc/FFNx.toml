@@ -746,6 +746,13 @@ ff8_use_gamepad_icons = false
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ff8_always_capture_input = false
 
+# Button mapping mode for gamepad face buttons
+# Options: "Auto" (default, auto-detects Nintendo Switch controllers and remaps A/B), "Swap" (force Nintendo layout), "NoSwap" (force Xbox/PlayStation layout)
+# PlayStation and Xbox controllers share the same physical face button layout (South = confirm).
+# Nintendo Switch swaps A/B positions versus Xbox, so Auto mode detects and corrects this automatically.
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~
+gamepad_button_mapping_mode = "Auto"
+
 # FPS Limiter
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # This flag will overwrite the internal FPS limiter of the game.
