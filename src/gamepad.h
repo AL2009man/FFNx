@@ -23,6 +23,7 @@
 
 #include <Windows.h>
 #include <SDL3/SDL.h>
+#include <string>
 
 // SDL-style button bitmask constants
 #define GAMEPAD_BUTTON_DPAD_UP        0x0001
@@ -35,6 +36,7 @@
 #define GAMEPAD_BUTTON_RIGHT_THUMB    0x0080
 #define GAMEPAD_BUTTON_LEFT_SHOULDER  0x0100
 #define GAMEPAD_BUTTON_RIGHT_SHOULDER 0x0200
+#define GAMEPAD_BUTTON_GUIDE          0x0400
 #define GAMEPAD_BUTTON_A              0x1000
 #define GAMEPAD_BUTTON_B              0x2000
 #define GAMEPAD_BUTTON_X              0x4000
@@ -82,7 +84,8 @@ private:
 
     bool Gamepad_Init();
     void handleSDLEvents();
-    bool openFirstAvailableGamepad();
+    bool openGamepad();
+    void GetDeviceName(SDL_Gamepad *gp, SDL_JoystickID id);
     void closeGamepad();
 
 public:
@@ -96,6 +99,7 @@ public:
     float rightStickY;
     float leftTrigger;
     float rightTrigger;
+    std::string controllerName;
 
     int  GetPort() const;
     GamepadInput* GetState();
