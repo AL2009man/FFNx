@@ -22,21 +22,21 @@
 #include <cmath>
 #include <SDL3/SDL.h>
 
+#include "cfg.h"
 #include "log.h"
 #include "gamepad.h"
-#include "glyph.h"
 
 Gamepad gamepad;
 
 Gamepad::Gamepad()
     : cId(-1), deadzoneX(0.05f), deadzoneY(0.02f), sdlGamepad(nullptr), sdlInstanceId(-1), sdlInitialized(false),
-      leftStickX(0.0f), leftStickY(0.0f), rightStickX(0.0f), rightStickY(0.0f), leftTrigger(0.0f), rightTrigger(0.0f)
+      leftStickX(0.0f), leftStickY(0.0f), rightStickX(0.0f), rightStickY(0.0f), leftTrigger(0.0f), rightTrigger(0.0f), controllerName("")
 {
 }
 
 Gamepad::Gamepad(float dzX, float dzY)
     : cId(-1), deadzoneX(dzX), deadzoneY(dzY), sdlGamepad(nullptr), sdlInstanceId(-1), sdlInitialized(false),
-      leftStickX(0.0f), leftStickY(0.0f), rightStickX(0.0f), rightStickY(0.0f), leftTrigger(0.0f), rightTrigger(0.0f)
+      leftStickX(0.0f), leftStickY(0.0f), rightStickX(0.0f), rightStickY(0.0f), leftTrigger(0.0f), rightTrigger(0.0f), controllerName("")
 {
 }
 
@@ -106,52 +106,8 @@ void Gamepad::GetDeviceName(SDL_Gamepad *gp, SDL_JoystickID id)
     cId = 0;
     const char *name = SDL_GetGamepadName(gp);
     controllerName = name ? name : "";
-    controllerType = SDL_GetGamepadType(sdlGamepad);
-    Glyph::SetControllerType(controllerType);
     if (trace_all || trace_gamepad)
-        ffnx_trace("Gamepad connected: %s (type=%d)\n", controllerName.c_str(), (int)controllerType);
-}
-
-static std::string SDLGamepadButtonLabelToString(SDL_GamepadButtonLabel label)
-{
-    switch (label)
-    {
-        case SDL_GAMEPAD_BUTTON_LABEL_A:      return "A";
-        case SDL_GAMEPAD_BUTTON_LABEL_B:      return "B";
-        case SDL_GAMEPAD_BUTTON_LABEL_X:      return "X";
-        case SDL_GAMEPAD_BUTTON_LABEL_Y:      return "Y";
-        case SDL_GAMEPAD_BUTTON_LABEL_CROSS:  return "Cross";
-        case SDL_GAMEPAD_BUTTON_LABEL_CIRCLE: return "Circle";
-        case SDL_GAMEPAD_BUTTON_LABEL_SQUARE: return "Square";
-        case SDL_GAMEPAD_BUTTON_LABEL_TRIANGLE: return "Triangle";
-        case SDL_GAMEPAD_BUTTON_LABEL_UNKNOWN:
-        default:
-            return "Unknown";
-    }
-}
-
-static bool SDLGamepadButtonFromLegacyMask(WORD legacyMask, SDL_GamepadButton &outSDLButton)
-{
-    switch (legacyMask)
-    {
-        case GAMEPAD_BUTTON_A:              outSDLButton = SDL_GAMEPAD_BUTTON_SOUTH; return true;
-        case GAMEPAD_BUTTON_B:              outSDLButton = SDL_GAMEPAD_BUTTON_EAST; return true;
-        case GAMEPAD_BUTTON_X:              outSDLButton = SDL_GAMEPAD_BUTTON_WEST; return true;
-        case GAMEPAD_BUTTON_Y:              outSDLButton = SDL_GAMEPAD_BUTTON_NORTH; return true;
-        case GAMEPAD_BUTTON_LEFT_SHOULDER:  outSDLButton = SDL_GAMEPAD_BUTTON_LEFT_SHOULDER; return true;
-        case GAMEPAD_BUTTON_RIGHT_SHOULDER: outSDLButton = SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER; return true;
-        case GAMEPAD_BUTTON_LEFT_THUMB:     outSDLButton = SDL_GAMEPAD_BUTTON_LEFT_STICK; return true;
-        case GAMEPAD_BUTTON_RIGHT_THUMB:    outSDLButton = SDL_GAMEPAD_BUTTON_RIGHT_STICK; return true;
-        case GAMEPAD_BUTTON_BACK:           outSDLButton = SDL_GAMEPAD_BUTTON_BACK; return true;
-        case GAMEPAD_BUTTON_START:          outSDLButton = SDL_GAMEPAD_BUTTON_START; return true;
-        case GAMEPAD_BUTTON_DPAD_UP:        outSDLButton = SDL_GAMEPAD_BUTTON_DPAD_UP; return true;
-        case GAMEPAD_BUTTON_DPAD_DOWN:      outSDLButton = SDL_GAMEPAD_BUTTON_DPAD_DOWN; return true;
-        case GAMEPAD_BUTTON_DPAD_LEFT:      outSDLButton = SDL_GAMEPAD_BUTTON_DPAD_LEFT; return true;
-        case GAMEPAD_BUTTON_DPAD_RIGHT:     outSDLButton = SDL_GAMEPAD_BUTTON_DPAD_RIGHT; return true;
-        case GAMEPAD_BUTTON_GUIDE:          outSDLButton = SDL_GAMEPAD_BUTTON_GUIDE; return true;
-        default:
-            return false;
-    }
+        ffnx_trace("Gamepad connected: %s\n", controllerName.c_str());
 }
 
 void Gamepad::handleSDLEvents()
@@ -250,8 +206,8 @@ void Gamepad::closeGamepad()
 
     sdlInstanceId = -1;
     cId = -1;
-    controllerType = SDL_GAMEPAD_TYPE_UNKNOWN;
     controllerName.clear();
+
     ZeroMemory(&state, sizeof(state));
     leftStickX = leftStickY = rightStickX = rightStickY = 0.0f;
     leftTrigger = rightTrigger = 0.0f;
@@ -286,6 +242,10 @@ bool Gamepad::Refresh()
             return false;
     }
 
+
+    deadzoneX = (float)left_analog_stick_deadzone;
+    deadzoneY = (float)right_analog_stick_deadzone;
+
     auto normAxis = [](Sint16 v) -> float { return fmaxf(-1.0f, (float)v / 32767.0f); };
     auto applyDeadzone = [](float v, float dz) -> float
     {
@@ -299,8 +259,14 @@ bool Gamepad::Refresh()
     rightStickX =  applyDeadzone(normAxis(SDL_GetGamepadAxis(sdlGamepad, SDL_GAMEPAD_AXIS_RIGHTX)), deadzoneX);
     rightStickY = -applyDeadzone(normAxis(SDL_GetGamepadAxis(sdlGamepad, SDL_GAMEPAD_AXIS_RIGHTY)), deadzoneY);
 
-    leftTrigger  = SDL_clamp((float)SDL_GetGamepadAxis(sdlGamepad, SDL_GAMEPAD_AXIS_LEFT_TRIGGER)  / 32767.0f, 0.0f, 1.0f);
-    rightTrigger = SDL_clamp((float)SDL_GetGamepadAxis(sdlGamepad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) / 32767.0f, 0.0f, 1.0f);
+    auto applyTriggerDeadzone = [](float v, float dz) -> float
+    {
+        if (v <= dz) return 0.0f;
+        return (v - dz) / (1.0f - dz);
+    };
+
+    leftTrigger  = applyTriggerDeadzone(SDL_clamp((float)SDL_GetGamepadAxis(sdlGamepad, SDL_GAMEPAD_AXIS_LEFT_TRIGGER)  / 32767.0f, 0.0f, 1.0f), (float)left_analog_trigger_deadzone);
+    rightTrigger = applyTriggerDeadzone(SDL_clamp((float)SDL_GetGamepadAxis(sdlGamepad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) / 32767.0f, 0.0f, 1.0f), (float)right_analog_trigger_deadzone);
 
     static const WORD buttonMasks[] = {
         GAMEPAD_BUTTON_DPAD_UP, GAMEPAD_BUTTON_DPAD_DOWN, GAMEPAD_BUTTON_DPAD_LEFT,  GAMEPAD_BUTTON_DPAD_RIGHT,
@@ -357,51 +323,6 @@ bool Gamepad::Vibrate(WORD wLeftMotorSpeed, WORD wRightMotorSpeed)
     }
 
     return true;
-}
-
-SDL_GamepadType Gamepad::GetControllerType() const
-{
-    return controllerType;
-}
-
-std::string Gamepad::GetButtonPrompt(SDL_GamepadButton button) const
-{
-    return Glyph::GetButtonLabel(GlyphStyle::Auto, button);
-}
-
-std::string Gamepad::GetButtonPromptFromLegacyMask(WORD legacyButtonMask) const
-{
-    return Glyph::GetButtonLabelFromMask(GlyphStyle::Auto, legacyButtonMask);
-}
-
-std::string Gamepad::GetXboxButtonPrompt(SDL_GamepadButton button) const
-{
-    return Glyph::GetXboxLabel(button);
-}
-
-std::string Gamepad::GetPlayStationButtonPrompt(SDL_GamepadButton button) const
-{
-    return Glyph::GetPlayStationLabel(button);
-}
-
-std::string Gamepad::GetNintendoButtonPrompt(SDL_GamepadButton button) const
-{
-    return Glyph::GetNintendoLabel(button);
-}
-
-std::string Gamepad::GetXboxButtonPromptFromLegacyMask(WORD legacyButtonMask) const
-{
-    return Glyph::GetXboxLabelFromMask(legacyButtonMask);
-}
-
-std::string Gamepad::GetPlayStationButtonPromptFromLegacyMask(WORD legacyButtonMask) const
-{
-    return Glyph::GetPlayStationLabelFromMask(legacyButtonMask);
-}
-
-std::string Gamepad::GetNintendoButtonPromptFromLegacyMask(WORD legacyButtonMask) const
-{
-    return Glyph::GetNintendoLabelFromMask(legacyButtonMask);
 }
 
 bool Gamepad::IsPressed(WORD button) const

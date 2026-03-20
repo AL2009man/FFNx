@@ -20,10 +20,6 @@
 /****************************************************************************/
 
 #include "api.h"
-#include "gamepad.h"
-#include "glyph.h"
-
-thread_local static std::string nxApiBufferString;
 
 FFNX_API void __stdcall nxRegisterMouseListener(MouseListener* listener)
 {
@@ -33,57 +29,4 @@ FFNX_API void __stdcall nxRegisterMouseListener(MouseListener* listener)
 FFNX_API void __stdcall nxRegisterKeyListener(KeyListener* listener)
 {
     keyListeners.push_back(listener);
-}
-
-FFNX_API const char* __stdcall nxGetXboxButtonPrompt(int button)
-{
-    nxApiBufferString = Glyph::GetXboxLabel((SDL_GamepadButton)button);
-    return nxApiBufferString.c_str();
-}
-
-FFNX_API const char* __stdcall nxGetPlayStationButtonPrompt(int button)
-{
-    nxApiBufferString = Glyph::GetPlayStationLabel((SDL_GamepadButton)button);
-    return nxApiBufferString.c_str();
-}
-
-FFNX_API const char* __stdcall nxGetNintendoButtonPrompt(int button)
-{
-    nxApiBufferString = Glyph::GetNintendoLabel((SDL_GamepadButton)button);
-    return nxApiBufferString.c_str();
-}
-
-FFNX_API const char* __stdcall nxGetXboxButtonPromptFromMask(unsigned short legacyButtonMask)
-{
-    nxApiBufferString = Glyph::GetXboxLabelFromMask(legacyButtonMask);
-    return nxApiBufferString.c_str();
-}
-
-FFNX_API const char* __stdcall nxGetPlayStationButtonPromptFromMask(unsigned short legacyButtonMask)
-{
-    nxApiBufferString = Glyph::GetPlayStationLabelFromMask(legacyButtonMask);
-    return nxApiBufferString.c_str();
-}
-
-FFNX_API const char* __stdcall nxGetNintendoButtonPromptFromMask(unsigned short legacyButtonMask)
-{
-    nxApiBufferString = Glyph::GetNintendoLabelFromMask(legacyButtonMask);
-    return nxApiBufferString.c_str();
-}
-
-FFNX_API const char* __stdcall nxGetButtonPromptAuto(int button)
-{
-    nxApiBufferString = Glyph::GetButtonLabel(GlyphStyle::Auto, (SDL_GamepadButton)button);
-    return nxApiBufferString.c_str();
-}
-
-FFNX_API const char* __stdcall nxGetButtonPromptAutoFromMask(unsigned short legacyButtonMask)
-{
-    nxApiBufferString = Glyph::GetButtonLabelFromMask(GlyphStyle::Auto, legacyButtonMask);
-    return nxApiBufferString.c_str();
-}
-
-FFNX_API int __stdcall nxGetGamepadType(void)
-{
-    return (int)Glyph::GetControllerType();
 }

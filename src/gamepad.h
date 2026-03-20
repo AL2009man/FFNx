@@ -80,8 +80,8 @@ private:
 
     SDL_Gamepad *sdlGamepad = nullptr;
     SDL_JoystickID sdlInstanceId = -1;
-    SDL_GamepadType controllerType = SDL_GAMEPAD_TYPE_UNKNOWN;
     bool sdlInitialized = false;
+    std::string controllerName;
 
     bool Gamepad_Init();
     void handleSDLEvents();
@@ -100,7 +100,6 @@ public:
     float rightStickY;
     float leftTrigger;
     float rightTrigger;
-    std::string controllerName;
 
     int  GetPort() const;
     GamepadInput* GetState();
@@ -110,20 +109,6 @@ public:
     bool Vibrate(WORD wLeftMotorSpeed, WORD wRightMotorSpeed);
     bool IsPressed(WORD) const;
     bool IsIdle() const;
-
-    SDL_GamepadType GetControllerType() const;
-    std::string GetButtonPrompt(SDL_GamepadButton button) const;
-    std::string GetButtonPromptFromLegacyMask(WORD legacyButtonMask) const;
-
-    // Modder-friendly helper APIs for platform-specific button art text
-    std::string GetXboxButtonPrompt(SDL_GamepadButton button) const;
-    std::string GetPlayStationButtonPrompt(SDL_GamepadButton button) const;
-    std::string GetNintendoButtonPrompt(SDL_GamepadButton button) const;
-
-    // Legacy mask variant
-    std::string GetXboxButtonPromptFromLegacyMask(WORD legacyButtonMask) const;
-    std::string GetPlayStationButtonPromptFromLegacyMask(WORD legacyButtonMask) const;
-    std::string GetNintendoButtonPromptFromLegacyMask(WORD legacyButtonMask) const;
 };
 
 extern Gamepad gamepad;
