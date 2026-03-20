@@ -105,8 +105,9 @@ void Gamepad::GetDeviceName(SDL_Gamepad *gp, SDL_JoystickID id)
     cId = 0;
     const char *name = SDL_GetGamepadName(gp);
     controllerName = name ? name : "";
+    controllerType = SDL_GetGamepadType(gp);
     if (trace_all || trace_gamepad)
-        ffnx_trace("Gamepad connected: %s\n", controllerName.c_str());
+        ffnx_trace("Gamepad connected: %s (%s)\n", controllerName.c_str(), GetTypeGlyphSet());
 }
 
 void Gamepad::handleSDLEvents()
@@ -206,9 +207,131 @@ void Gamepad::closeGamepad()
     sdlInstanceId = -1;
     cId = -1;
     controllerName.clear();
+    controllerType = SDL_GAMEPAD_TYPE_UNKNOWN;
     ZeroMemory(&state, sizeof(state));
     leftStickX = leftStickY = rightStickX = rightStickY = 0.0f;
     leftTrigger = rightTrigger = 0.0f;
+}
+
+SDL_GamepadType Gamepad::GetType() const
+{
+    return controllerType;
+}
+
+const char* Gamepad::GetTypeGlyphSet() const
+{
+    switch (controllerType)
+    {
+        case SDL_GAMEPAD_TYPE_XBOX360:
+        case SDL_GAMEPAD_TYPE_XBOXONE:
+            return "Xbox";
+        case SDL_GAMEPAD_TYPE_PS3:
+        case SDL_GAMEPAD_TYPE_PS4:
+        case SDL_GAMEPAD_TYPE_PS5:
+            return "PlayStation";
+        case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO:
+        case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT:
+        case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT:
+        case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR:
+            return "Nintendo";
+        default:
+            return "Generic";
+    }
+}
+
+SDL_GamepadButtonLabel Gamepad::GetButtonLabel(SDL_GamepadButton button) const
+{
+    if (sdlGamepad)
+        return SDL_GetGamepadButtonLabel(sdlGamepad, button);
+    SDL_GamepadType fallback = (controllerType != SDL_GAMEPAD_TYPE_UNKNOWN)
+        ? controllerType : SDL_GAMEPAD_TYPE_STANDARD;
+    return SDL_GetGamepadButtonLabelForType(fallback, button);
+}
+
+const char* Gamepad::GetButtonLabelName(SDL_GamepadButtonLabel label) const
+{
+    switch (label)
+    {
+        case SDL_GAMEPAD_BUTTON_LABEL_A:        return "A";
+        case SDL_GAMEPAD_BUTTON_LABEL_B:        return "B";
+        case SDL_GAMEPAD_BUTTON_LABEL_X:        return "X";
+        case SDL_GAMEPAD_BUTTON_LABEL_Y:        return "Y";
+        case SDL_GAMEPAD_BUTTON_LABEL_CROSS:    return "Cross";
+        case SDL_GAMEPAD_BUTTON_LABEL_CIRCLE:   return "Circle";
+        case SDL_GAMEPAD_BUTTON_LABEL_SQUARE:   return "Square";
+        case SDL_GAMEPAD_BUTTON_LABEL_TRIANGLE: return "Triangle";
+        default:                                return "Unknown";
+    }
+}
+
+const char* Gamepad::GetButtonPromptLabel(const char* actionToken) const
+{
+    if (!actionToken) return "Unknown";
+
+    // --- Face buttons: resolved per-controller via SDL_GetGamepadButtonLabel ---
+    struct FaceAction { const char* token; SDL_GamepadButton button; };
+    static const FaceAction faceActions[] = {
+        { "Confirm", SDL_GAMEPAD_BUTTON_SOUTH },
+        { "Cancel",  SDL_GAMEPAD_BUTTON_EAST  },
+        { "Menu",    SDL_GAMEPAD_BUTTON_NORTH },
+        { "Assist",  SDL_GAMEPAD_BUTTON_WEST  },
+        // Raw face-button names (pass-through queries)
+        { "South",   SDL_GAMEPAD_BUTTON_SOUTH },
+        { "East",    SDL_GAMEPAD_BUTTON_EAST  },
+        { "North",   SDL_GAMEPAD_BUTTON_NORTH },
+        { "West",    SDL_GAMEPAD_BUTTON_WEST  },
+    };
+    for (const auto& fa : faceActions)
+    {
+        if (SDL_strcasecmp(actionToken, fa.token) == 0)
+            return GetButtonLabelName(GetButtonLabel(fa.button));
+    }
+
+    // --- Non-face buttons: derive platform from what SDL actually reports
+    SDL_GamepadButtonLabel southLabel = GetButtonLabel(SDL_GAMEPAD_BUTTON_SOUTH);
+    const bool isPS     = (southLabel == SDL_GAMEPAD_BUTTON_LABEL_CROSS);
+    const bool isSwitch = (southLabel == SDL_GAMEPAD_BUTTON_LABEL_B);
+
+    // Shoulders
+    if (SDL_strcasecmp(actionToken, "L1") == 0 || SDL_strcasecmp(actionToken, "LeftShoulder") == 0 || SDL_strcasecmp(actionToken, "LB") == 0)
+        return isSwitch ? "L"  : (isPS ? "L1" : "LB");
+    if (SDL_strcasecmp(actionToken, "R1") == 0 || SDL_strcasecmp(actionToken, "RightShoulder") == 0 || SDL_strcasecmp(actionToken, "RB") == 0)
+        return isSwitch ? "R"  : (isPS ? "R1" : "RB");
+
+    // Triggers
+    if (SDL_strcasecmp(actionToken, "L2") == 0 || SDL_strcasecmp(actionToken, "LeftTrigger") == 0 || SDL_strcasecmp(actionToken, "LT") == 0)
+        return isSwitch ? "ZL" : (isPS ? "L2" : "LT");
+    if (SDL_strcasecmp(actionToken, "R2") == 0 || SDL_strcasecmp(actionToken, "RightTrigger") == 0 || SDL_strcasecmp(actionToken, "RT") == 0)
+        return isSwitch ? "ZR" : (isPS ? "R2" : "RT");
+
+    // Stick clicks
+    if (SDL_strcasecmp(actionToken, "L3") == 0 || SDL_strcasecmp(actionToken, "LeftThumb") == 0 || SDL_strcasecmp(actionToken, "LeftStickClick") == 0)
+        return "L3";
+    if (SDL_strcasecmp(actionToken, "R3") == 0 || SDL_strcasecmp(actionToken, "RightThumb") == 0 || SDL_strcasecmp(actionToken, "RightStickClick") == 0)
+        return "R3";
+
+    // Start / Select / Guide — names vary by platform
+    if (SDL_strcasecmp(actionToken, "Start") == 0 || SDL_strcasecmp(actionToken, "Options") == 0 || SDL_strcasecmp(actionToken, "Plus") == 0)
+        return isPS ? "Options" : (isSwitch ? "Plus"  : "Start");
+    if (SDL_strcasecmp(actionToken, "Select") == 0 || SDL_strcasecmp(actionToken, "Back") == 0 || SDL_strcasecmp(actionToken, "Share") == 0 || SDL_strcasecmp(actionToken, "Minus") == 0)
+        return isPS ? "Share"   : (isSwitch ? "Minus" : "Back");
+    if (SDL_strcasecmp(actionToken, "Guide") == 0 || SDL_strcasecmp(actionToken, "PS") == 0 || SDL_strcasecmp(actionToken, "Home") == 0)
+        return isPS ? "PS"      : (isSwitch ? "Home"  : "Guide");
+
+    // DPad
+    if (SDL_strcasecmp(actionToken, "Up")    == 0 || SDL_strcasecmp(actionToken, "DPadUp")    == 0) return "DPadUp";
+    if (SDL_strcasecmp(actionToken, "Down")  == 0 || SDL_strcasecmp(actionToken, "DPadDown")  == 0) return "DPadDown";
+    if (SDL_strcasecmp(actionToken, "Left")  == 0 || SDL_strcasecmp(actionToken, "DPadLeft")  == 0) return "DPadLeft";
+    if (SDL_strcasecmp(actionToken, "Right") == 0 || SDL_strcasecmp(actionToken, "DPadRight") == 0) return "DPadRight";
+    if (SDL_strcasecmp(actionToken, "Directional Buttons") == 0 || SDL_strcasecmp(actionToken, "DPad") == 0)
+        return "DPad";
+
+    // Analog stick directions / whole sticks
+    if (SDL_strcasecmp(actionToken, "LeftStick")  == 0) return "LeftStick";
+    if (SDL_strcasecmp(actionToken, "RightStick") == 0) return "RightStick";
+
+    // Unrecognized token: pass through as-is so mods can use custom tokens.
+    return actionToken;
 }
 
 bool Gamepad::CheckConnection()

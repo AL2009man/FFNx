@@ -80,6 +80,7 @@ private:
 
     SDL_Gamepad *sdlGamepad = nullptr;
     SDL_JoystickID sdlInstanceId = -1;
+    SDL_GamepadType controllerType = SDL_GAMEPAD_TYPE_UNKNOWN;
     bool sdlInitialized = false;
 
     bool Gamepad_Init();
@@ -104,6 +105,11 @@ public:
     int  GetPort() const;
     GamepadInput* GetState();
     const GamepadVibration &GetVibrationState() const;
+    SDL_GamepadType GetType() const;
+    const char* GetTypeGlyphSet() const;
+    SDL_GamepadButtonLabel GetButtonLabel(SDL_GamepadButton button) const;
+    const char* GetButtonLabelName(SDL_GamepadButtonLabel label) const;
+    const char* GetButtonPromptLabel(const char* actionToken) const;
     bool CheckConnection();
     bool Refresh();
     bool Vibrate(WORD wLeftMotorSpeed, WORD wRightMotorSpeed);
